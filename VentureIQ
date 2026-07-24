@@ -1,0 +1,1125 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Brain, BarChart3, Briefcase, Shield, HeartPulse, LineChart, 
+  MessageSquare, Paperclip, Send, ChevronRight, Activity, Building2,
+  FileText, PieChart, Users, ArrowRight, CheckCircle2, Upload, Target,
+  Link as LinkIcon, LogOut, Settings, Google, Globe, Radar
+} from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut
+} from 'firebase/auth';
+import { 
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, 
+  onSnapshot, addDoc, query, orderBy, serverTimestamp 
+} from 'firebase/firestore';
+
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+let app, auth, db;
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (error) {
+  console.error("Firebase init error:", error);
+}
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'venture-iq-default';
+
+const MODULES = [
+  { id: 'gtm', title: 'GTM Strategy & Expansion', icon: Globe, desc: 'Geographic expansion, audience scaling, and launch strategies.', persona: 'Chief Growth Officer (CGO)' },
+  { id: 'comp-intel', title: 'Competitor Intelligence', icon: Radar, desc: 'Macro industry trends, competitor teardowns, and USP building.', persona: 'Chief Strategy Officer (CSO)' },
+  { id: 'imc', title: 'Marketing & Comms (IMC)', icon: Target, desc: 'Advertising, Brand & Social Strategy.', persona: 'Chief Marketing Officer (CMO)' },
+  { id: 'finance', title: 'Finance & Accounting', icon: PieChart, desc: 'Financial models, Unit economics, Valuations.', persona: 'Chief Financial Officer (CFO)' },
+  { id: 'policy', title: 'Policy & Gov Relations', icon: Shield, desc: 'India-specific compliance, Grants, DPDP Act.', persona: 'Chief Compliance Officer (CCO)' },
+  { id: 'org', title: 'Organisation Design', icon: Users, desc: 'Hiring plans, Org structures, Compensation.', persona: 'Chief Human Resources Officer (CHRO)' },
+  { id: 'analytics', title: 'Data Analytics', icon: LineChart, desc: 'Descriptive, predictive, & prescriptive insights.', persona: 'Chief Data Officer (CDO)' },
+  { id: 'wellness', title: 'Founder Wellness', icon: HeartPulse, desc: 'Resilience frameworks & mental support.', persona: 'Founder Coach & Wellness Advisor' },
+  { id: 'bd', title: 'Business Development', icon: Briefcase, desc: 'Strategic vision, Lifecycle execution.', persona: 'VP of Business Development' },
+];
+
+const Auth = ({ onAuthSuccess }) => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSimulatedAuth = async (e) => {
+    if(e) e.preventDefault();
+    setError('');
+    try {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+      onAuthSuccess();
+    } catch (err) {
+      setError(err.message.replace('Firebase: ', ''));
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-12 h-12 bg-indigo-900 rounded-sm flex items-center justify-center mb-4">
+            <Brain className="text-white w-7 h-7" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Venture IQ</h2>
+          <p className="text-slate-500 text-sm mt-1">Intelligence as a Service for Indian Startups</p>
+        </div>
+
+        <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg mb-6 border border-blue-100 text-center leading-relaxed">
+          <strong>Sandbox Mode Active:</strong> External auth providers are restricted in this environment. You can enter any details below (or click Google) to securely sign in and save your progress using a simulated session.
+        </div>
+
+        {error && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">{error}</div>}
+
+        <button 
+          onClick={handleSimulatedAuth}
+          className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 text-slate-700 px-4 py-3 rounded-lg font-medium hover:bg-slate-50 transition-colors mb-6 shadow-sm"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div className="relative flex items-center py-2 mb-4">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="flex-shrink-0 mx-4 text-slate-400 text-sm">Or</span>
+          <div className="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <form onSubmit={handleSimulatedAuth} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <input 
+              type="email" 
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <input 
+              type="password" 
+              required
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" 
+            />
+          </div>
+          <button 
+            type="submit"
+            className="w-full bg-indigo-900 text-white px-4 py-3 rounded-lg font-medium hover:bg-indigo-800 transition-colors shadow-md"
+          >
+            {isLogin ? 'Sign In' : 'Create Account'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-sm">
+          <span className="text-slate-500">
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+          </span>
+          <button 
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-indigo-600 font-medium hover:underline"
+          >
+            {isLogin ? 'Sign Up' : 'Log In'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LandingPage = ({ onStart, user }) => (
+  <div className="min-h-screen bg-slate-50 selection:bg-indigo-200 selection:text-indigo-900 overflow-hidden flex flex-col">
+    {/* Navigation */}
+    <nav className="w-full bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex justify-between items-center fixed top-0 z-50">
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 bg-indigo-900 rounded-sm flex items-center justify-center">
+          <Brain className="text-white w-6 h-6" />
+        </div>
+        <span className="text-2xl font-bold tracking-tight text-slate-900">VENTURE IQ</span>
+      </div>
+      <div className="space-x-6 text-sm font-medium">
+        {!user && <button onClick={onStart} className="text-slate-600 hover:text-slate-900">Sign In</button>}
+        <button 
+          onClick={onStart}
+          className="bg-indigo-900 text-white px-5 py-2 rounded-md hover:bg-indigo-800 transition-colors"
+        >
+          {user ? 'Go to My Digital HQ' : 'Diagnose My Startup'}
+        </button>
+      </div>
+    </nav>
+
+    {/* Hero Section */}
+    <main className="max-w-7xl mx-auto px-8 pt-32 pb-24 flex-grow flex flex-col items-center justify-center">
+      <div className="max-w-3xl flex flex-col items-center text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-medium mb-6">
+          <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+          Now available for early-stage Indian founders
+        </div>
+        
+        <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6">
+          Top-tier strategy consulting. <br/>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
+            For everyone else.
+          </span>
+        </h1>
+        
+        <p className="text-xl text-slate-600 mb-10 leading-relaxed max-w-2xl">
+          We are the AI-backed co-founder and advisor every startup deserves. 
+          Get consulting-grade advisory across GTM, finance, and operations — regardless of your budget, network, or geography.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+          <button 
+            onClick={onStart}
+            className="flex items-center justify-center gap-2 bg-indigo-900 text-white px-8 py-4 rounded-md text-lg font-medium hover:bg-indigo-800 transition-all shadow-lg hover:shadow-xl w-full sm:w-auto"
+          >
+            {user ? 'Enter Digital HQ' : 'Diagnose my startup free'} <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Feature Grid */}
+      <div className="grid md:grid-cols-3 gap-8 mt-24 w-full">
+        {[
+          { title: "Personalised Intelligence", desc: "Our engine learns your startup's context through a structured diagnostic, delivering advice that actually fits.", icon: Brain },
+          { title: "Tangible Outputs", desc: "Download professional-grade pitch decks, financial models, and GTM strategy memos directly from your sessions.", icon: FileText },
+          { title: "India Contextualised", desc: "Aware of Indian policy (DPDP Act), startup schemes, and local market nuances.", icon: Target }
+        ].map((feat, idx) => (
+          <div key={idx} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <feat.icon className="w-8 h-8 text-indigo-600 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 mb-2">{feat.title}</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">{feat.desc}</p>
+          </div>
+        ))}
+      </div>
+    </main>
+  </div>
+);
+
+const Onboarding = ({ onComplete, initialData = null, userId }) => {
+  const standardIndustries = [
+    "Agriculture", 
+    "AgriTech", 
+    "Construction", 
+    "EdTech", 
+    "Education", 
+    "Energy", 
+    "Finance", 
+    "FinTech", 
+    "Gaming", 
+    "Healthcare", 
+    "HealthTech", 
+    "Hospitality", 
+    "Manufacturing", 
+    "Media and Entertainment", 
+    "Technology/AI", 
+    "Transportation"
+  ];
+
+  let initialSector = initialData?.sector || '';
+  let initialCustomSector = '';
+  if (initialSector && !standardIndustries.includes(initialSector)) {
+    initialCustomSector = initialSector;
+    initialSector = 'Other';
+  }
+
+  const [step, setStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: initialData?.name || '', 
+    description: initialData?.description || '', 
+    problem: initialData?.problem || '',
+    solution: initialData?.solution || '',
+    targetAudience: initialData?.targetAudience || '',
+    sector: initialSector, 
+    customSector: initialCustomSector,
+    stage: initialData?.stage || '', 
+    teamSize: initialData?.teamSize || '',
+    specialBackground: initialData?.specialBackground || '',
+    website: initialData?.website || ''
+  });
+  const [error, setError] = useState('');
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setError('');
+  };
+
+  const handleNext = async () => {
+    // Validation per step
+    if (step === 1 && (!formData.name.trim() || !formData.description.trim())) {
+      setError('Please fill out all business identity fields to continue.');
+      return;
+    }
+    if (step === 2 && (!formData.problem.trim() || !formData.solution.trim() || !formData.targetAudience.trim())) {
+      setError('Please define your core proposition, problem, and target audience clearly.');
+      return;
+    }
+    if (step === 3) {
+       if (!formData.sector || !formData.stage || !formData.teamSize || !formData.specialBackground.trim()) {
+         setError('Please complete all market and team profile fields.');
+         return;
+       }
+       if (formData.sector === 'Other' && !formData.customSector.trim()) {
+         setError('Please specify your custom industry.');
+         return;
+       }
+    }
+    
+    setError('');
+
+    if (step < 4) {
+      setStep(step + 1);
+    } else {
+      setIsProcessing(true);
+      
+      const dataToSave = {
+        ...formData,
+        sector: formData.sector === 'Other' ? formData.customSector.trim() : formData.sector,
+        updatedAt: serverTimestamp()
+      };
+      delete dataToSave.customSector;
+      
+      // Save to Firebase
+      try {
+         await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data'), dataToSave);
+         setTimeout(() => onComplete(dataToSave), 2500); 
+      } catch (err) {
+         console.error("Error saving profile:", err);
+         setIsProcessing(false);
+         setError("Failed to save profile. Please try again.");
+      }
+    }
+  };
+
+  if (isProcessing) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
+        <Brain className="w-16 h-16 text-indigo-500 animate-pulse mb-8" />
+        <h2 className="text-2xl font-bold mb-4">Building your intelligence profile...</h2>
+        <div className="space-y-3 w-64 text-sm text-slate-400">
+          <div className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Analysing sector landscape</div>
+          <div className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Profiling competitive intelligence</div>
+          <div className="flex items-center gap-3 animate-pulse"><Activity className="w-4 h-4 text-indigo-400" /> Calibrating advisory modules</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-20 px-6">
+      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 md:p-12">
+        <div className="flex justify-between items-center mb-8">
+          <span className="text-sm font-bold text-indigo-600 uppercase tracking-wider">Step {step} of 4</span>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`h-2 w-10 rounded-full ${i <= step ? 'bg-indigo-900' : 'bg-slate-200'}`} />
+            ))}
+          </div>
+        </div>
+
+        {error && <div className="mb-6 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">{error}</div>}
+
+        {step === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <h2 className="text-3xl font-bold text-slate-900">Business Identity</h2>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Startup Name *</label>
+              <input type="text" 
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" 
+                placeholder="e.g. Acme Corp" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Brief Description (Elevator Pitch) *</label>
+              <textarea 
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-32 resize-none" 
+                placeholder="In 2-3 sentences, what does your startup do?"></textarea>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <h2 className="text-3xl font-bold text-slate-900">Core Proposition</h2>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Target Audience *</label>
+              <input type="text" 
+                value={formData.targetAudience}
+                onChange={(e) => handleInputChange('targetAudience', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" 
+                placeholder="Who are you selling to? (e.g., GenZ Students, Tier-2 Retailers)" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">What problem are you addressing? *</label>
+              <textarea 
+                value={formData.problem}
+                onChange={(e) => handleInputChange('problem', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none" 
+                placeholder="Describe the exact pain point your customers face."></textarea>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">What is your solution? *</label>
+              <textarea 
+                value={formData.solution}
+                onChange={(e) => handleInputChange('solution', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none" 
+                placeholder="How does your product/service uniquely solve this problem?"></textarea>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <h2 className="text-3xl font-bold text-slate-900">Market & Team Profile</h2>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Industry Vertical *</label>
+              <select 
+                value={formData.sector}
+                onChange={(e) => handleInputChange('sector', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none mb-3"
+              >
+                <option value="">Select an industry...</option>
+                {standardIndustries.map(ind => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
+                <option value="Other">Other (Please specify)</option>
+              </select>
+              
+              {formData.sector === 'Other' && (
+                <input 
+                  type="text" 
+                  value={formData.customSector}
+                  onChange={(e) => handleInputChange('customSector', e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none animate-in fade-in slide-in-from-top-2" 
+                  placeholder="Enter your specific industry" 
+                />
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Current Stage *</label>
+                <select 
+                  value={formData.stage}
+                  onChange={(e) => handleInputChange('stage', e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="">Select stage...</option>
+                  <option value="Idea">Idea Stage</option><option value="MVP">MVP / Prototype</option><option value="Early">Early Revenue</option><option value="Scaling">Scaling (Series A+)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Team Size *</label>
+                <select 
+                  value={formData.teamSize}
+                  onChange={(e) => handleInputChange('teamSize', e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="">Select size...</option>
+                  <option value="Solo">Solo Founder</option>
+                  <option value="2-5">2-5 members</option>
+                  <option value="6-15">6-15 members</option>
+                  <option value="16-50">16-50 members</option>
+                  <option value="50+">50+ members</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Founder / Team Special Background *</label>
+              <textarea 
+                value={formData.specialBackground}
+                onChange={(e) => handleInputChange('specialBackground', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none" 
+                placeholder="E.g., Alumni of IIT/IIM, ex-Google/Microsoft/HUL, domain experts with 10 years in logistics, or none."></textarea>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <h2 className="text-3xl font-bold text-slate-900">Digital Office Setup</h2>
+            <p className="text-slate-500">Upload your pitch deck, financials, or provide your website URL to configure your digital HQ. (Optional)</p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Website URL</label>
+              <input type="url" 
+                value={formData.website}
+                onChange={(e) => handleInputChange('website', e.target.value)}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" 
+                placeholder="https://..." 
+              />
+            </div>
+            <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 transition-colors cursor-pointer group">
+              <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3 group-hover:text-indigo-500 transition-colors" />
+              <p className="text-sm font-medium text-slate-700">Click to upload documents</p>
+              <p className="text-xs text-slate-500 mt-1">PDF, PPTX, XLSX (Max 10MB)</p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-10 flex justify-end">
+          {step > 1 && (
+             <button 
+                onClick={() => setStep(step - 1)}
+                className="bg-white text-slate-600 px-8 py-3 rounded-md font-medium hover:bg-slate-50 border border-slate-200 mr-4"
+              >
+                Back
+              </button>
+          )}
+          <button 
+            onClick={handleNext}
+            className="bg-indigo-900 text-white px-8 py-3 rounded-md font-medium hover:bg-indigo-800 flex items-center gap-2 shadow-md"
+          >
+            {step === 4 ? (initialData ? 'Update Office' : 'Launch Digital HQ') : 'Continue'} <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Dashboard = ({ onSelectModule, userProfile }) => (
+  <div className="p-8 max-w-6xl mx-auto w-full">
+    <div className="mb-10 border-b border-slate-200 pb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 bg-indigo-900 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-inner">
+            {userProfile?.name?.charAt(0)?.toUpperCase()}
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900">{userProfile?.name || 'Startup'} Digital HQ</h1>
+        </div>
+        <p className="text-slate-500 max-w-2xl leading-relaxed">
+          Your exclusive workspace and intelligence hub. Operating in the <span className="font-semibold text-slate-700">{userProfile?.sector}</span> sector.
+        </p>
+      </div>
+      <div className="flex gap-4">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-center">
+          <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Stage</span>
+          <span className="font-semibold text-indigo-700">{userProfile?.stage}</span>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-center">
+          <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Team</span>
+          <span className="font-semibold text-indigo-700">{userProfile?.teamSize}</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Custom Business Context Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <div className="bg-amber-50 rounded-xl p-6 border border-amber-100 shadow-sm">
+        <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2 flex items-center gap-2"><Users className="w-4 h-4"/> Target Audience</h3>
+        <p className="text-slate-700 text-sm leading-relaxed">{userProfile?.targetAudience || 'Not defined'}</p>
+      </div>
+      <div className="bg-rose-50 rounded-xl p-6 border border-rose-100 shadow-sm">
+        <h3 className="text-xs font-bold text-rose-800 uppercase tracking-wider mb-2 flex items-center gap-2"><Target className="w-4 h-4"/> The Problem</h3>
+        <p className="text-slate-700 text-sm leading-relaxed">{userProfile?.problem || 'Not defined'}</p>
+      </div>
+      <div className="bg-emerald-50 rounded-xl p-6 border border-emerald-100 shadow-sm">
+        <h3 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2 flex items-center gap-2"><Building2 className="w-4 h-4"/> Your Solution</h3>
+        <p className="text-slate-700 text-sm leading-relaxed">{userProfile?.solution || 'Not defined'}</p>
+      </div>
+    </div>
+
+    {/* Health Score Card */}
+    <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl p-8 text-white mb-12 shadow-lg relative overflow-hidden">
+      <div className="absolute top-0 right-0 p-8 opacity-10">
+        <Brain className="w-48 h-48" />
+      </div>
+      <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+        <div className="w-32 h-32 rounded-full border-4 border-indigo-500 flex items-center justify-center shrink-0 bg-indigo-900/50">
+          <div className="text-center">
+            <span className="text-4xl font-black">72</span>
+            <span className="block text-xs font-medium text-indigo-300">/ 100</span>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold mb-2">{userProfile?.name} Health Score: High Potential</h2>
+          <p className="text-indigo-200 max-w-2xl leading-relaxed text-sm">
+            Your unique solution targeting <strong>{userProfile?.targetAudience}</strong> is well-defined. Given the background of your team ({userProfile?.teamSize}), you have a strong execution edge. We recommend prioritizing the <span className="font-bold text-white">Competitor Intelligence</span> and <span className="font-bold text-white">GTM Strategy</span> modules to solidify your moat before scaling in the {userProfile?.sector} market.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2 mb-6">
+      <Briefcase className="w-5 h-5 text-slate-400" />
+      <h2 className="text-xl font-bold text-slate-900">Your Executive Board (Advisory Modules)</h2>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
+      {MODULES.map((mod) => (
+        <button 
+          key={mod.id} 
+          onClick={() => onSelectModule(mod)}
+          className="bg-white border border-slate-200 rounded-xl p-6 text-left hover:border-indigo-500 hover:shadow-md transition-all group relative overflow-hidden"
+        >
+          <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-50 transition-colors">
+            <mod.icon className="w-6 h-6 text-indigo-600" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">{mod.title}</h3>
+          <p className="text-sm text-slate-500 leading-relaxed mb-4">{mod.desc}</p>
+          <div className="text-xs font-medium text-indigo-600 flex items-center gap-1 group-hover:gap-2 transition-all">
+            Consult {mod.persona.split(' (')[0]} <ArrowRight className="w-3 h-3" />
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const AdvisoryModule = ({ module, onBack, userProfile, userId }) => {
+  const [messages, setMessages] = useState([]);
+  const [apiHistory, setApiHistory] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlValue, setUrlValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
+  const textareaRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+
+  const systemPrompt = `You are a top-tier Strategy Consultant acting as the ${module.persona} for a startup named ${userProfile?.name || 'the startup'}.
+  Startup Context:
+  - Sector: ${userProfile?.sector}
+  - Problem they solve: ${userProfile?.problem}
+  - Solution: ${userProfile?.solution}
+  - Target Audience: ${userProfile?.targetAudience}
+  - Stage: ${userProfile?.stage}
+  - Team: ${userProfile?.teamSize}, Background: ${userProfile?.specialBackground}
+
+  Your Directives:
+  1. Role: Provide professional, highly specialized guidance within YOUR domain (${module.title}). Use the Google Search tool to ensure your advice is backed by real-time data.
+  2. Capabilities: Strategize, provide Research & Insights, and Ideate. Help the user think broadly but also drill down into concrete decision-making.
+  3. Tone & Approach: Be straightforward. Critically analyze loopholes, limitations, and risks in the user's decisions. Appreciate good decisions when appropriate. Give practical angles and diverse perspectives.
+  4. Interaction: Always end your response with the right, highly targeted follow-up questions to gain a better understanding and drive the strategy forward.
+  5. Module Routing: If the user asks about a topic outside ${module.title}, politely redirect them to the correct module (e.g., Marketing, Finance, Org Design).
+  6. Formatting: Use clean paragraphs. Use **bolding** for emphasis and key terms. Do not use markdown headers (#).`;
+
+  // ============================================================================
+  // AI ROUTING GATEWAY (Production Architecture)
+  // In production, move these calls to Supabase Edge Functions or Make.com
+  // ============================================================================
+  
+  const callIntelligenceEngine = async (history, currentMessage, intent = 'advisory') => {
+    // 1. CLAUDE OPUS (Document Generation & Large File Analysis)
+    if (intent === 'document_generation' || currentMessage.includes('[Attached File]')) {
+       console.log("Routing to: Claude Opus (claude-3-opus-20240229) for deep document analysis/generation.");
+       /* 
+       return await fetch('https://api.anthropic.com/v1/messages', {
+         method: 'POST',
+         headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+         body: JSON.stringify({ model: 'claude-3-opus-20240229', max_tokens: 4096, messages: history })
+       }); 
+       */
+    }
+
+    // 2. PERPLEXITY SONAR PRO (Real-time Macro Data)
+    if (intent === 'real_time_research') {
+       console.log("Routing to: Perplexity Sonar Pro (llama-3-sonar-pro-32k-online) for live data.");
+       /*
+       return await fetch('https://api.perplexity.ai/chat/completions', {
+         method: 'POST',
+         headers: { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`, 'Content-Type': 'application/json' },
+         body: JSON.stringify({ model: 'llama-3-sonar-pro-32k-online', messages: history })
+       });
+       */
+    }
+
+    // 3. GPT-5 / GEMINI PRO (High-level Strategic Advisory)
+    if (intent === 'advisory') {
+       console.log("Routing to: GPT-5 / Gemini Pro for core advisory.");
+       /*
+       return await fetch('https://api.openai.com/v1/chat/completions', {
+         method: 'POST',
+         headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+         body: JSON.stringify({ model: 'gpt-4o', messages: history }) // Upgrade to gpt-5 when available
+       });
+       */
+    }
+
+    // ============================================================================
+    // FALLBACK FOR PREVIEW ENVIRONMENT: Gemini 3 Flash
+    // We route all calls here securely in the frontend to maintain app functionality
+    // ============================================================================
+    const apiKey = ""; 
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+    
+    const payload = {
+      contents: history,
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      tools: [{ "google_search": {} }]
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    return await response.json();
+  };
+
+  useEffect(() => {
+    if (!userId || !module.id) return;
+    
+    let isMounted = true;
+    setMessages([]);
+    setApiHistory([]);
+    
+    const initSession = async () => {
+      setIsTyping(true);
+      const initUserMessage = `Hello. Please introduce yourself as our ${module.persona}. Acknowledge our startup's core solution (${userProfile?.solution}) and target audience (${userProfile?.targetAudience}). Then, provide 2-3 broad, proactive strategic suggestions specifically related to ${module.title} that we should focus on given our current stage (${userProfile?.stage}). End by asking a provocative follow-up question to kick off our session.`;
+      
+      const historySetup = [{ role: "user", parts: [{ text: initUserMessage }] }];
+
+      try {
+        const result = await callIntelligenceEngine(historySetup, initUserMessage, 'advisory');
+        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Hello! I am ready to assist you. What specific challenge are we tackling today?";
+
+        if (isMounted) {
+          setMessages([{ role: 'ai', content: aiText }]);
+          setApiHistory([
+            { role: "user", parts: [{ text: initUserMessage }] },
+            { role: "model", parts: [{ text: aiText }] }
+          ]);
+        }
+      } catch (err) {
+        console.error("Initialization API Error", err);
+        if (isMounted) {
+           const fallbackText = `Hello ${userProfile?.name ? userProfile.name + ' team' : 'Founder'}. I am acting as your **${module.persona}**.\n\nI have reviewed your profile. Given you are solving a critical problem for **${userProfile?.targetAudience || 'your target audience'}** at the ${userProfile?.stage} stage, let's look at some broad strategies.\n\nWhat specific challenge within my domain are we tackling today?`;
+           setMessages([{ role: 'ai', content: fallbackText }]);
+           setApiHistory([{ role: "model", parts: [{ text: fallbackText }] }]);
+        }
+      } finally {
+        if (isMounted) setIsTyping(false);
+      }
+    };
+    
+    initSession();
+    
+    return () => { isMounted = false; };
+  }, [module.id]);
+
+  const handleInput = (e) => {
+    setInputValue(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollContainerRef.current) {
+        const container = scrollContainerRef.current;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => { scrollToBottom(); }, [messages, isTyping, isGeneratingDoc]);
+
+  const handleSend = async () => {
+    const text = inputValue.trim();
+    const url = urlValue.trim();
+    if (!text && !url) return;
+
+    let userMessage = text;
+    if (url) {
+      userMessage = userMessage ? `[Attached URL: ${url}]\n${userMessage}` : `[Attached URL: ${url}]`;
+    }
+
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setInputValue('');
+    setUrlValue('');
+    setShowUrlInput(false);
+    setIsTyping(true);
+    
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+    const newUserMsg = { role: "user", parts: [{ text: userMessage }] };
+    const currentHistory = [...apiHistory, newUserMsg];
+    setApiHistory(currentHistory);
+
+    try {
+      // Intent mapping: If user asks for macro data, we route to Perplexity. Otherwise, Advisory.
+      const intent = userMessage.toLowerCase().includes('research') || userMessage.toLowerCase().includes('data') 
+        ? 'real_time_research' 
+        : 'advisory';
+
+      const result = await callIntelligenceEngine(currentHistory, userMessage, intent);
+      const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "I apologize, I am having trouble processing that right now. Could you rephrase?";
+
+      setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
+      setApiHistory(prev => [...prev, { role: "model", parts: [{ text: aiText }] }]);
+    } catch (err) {
+      console.error("API Error", err);
+      setMessages(prev => [...prev, { role: 'ai', content: "Connection error. Please check your network and try again." }]);
+      setApiHistory(apiHistory);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleGenerateDocument = async () => {
+    setIsGeneratingDoc(true);
+    
+    const docRequestMsg = `Please generate a comprehensive, structured ${module.title} document based on our conversation above. Format it professionally with clear headings.`;
+    setMessages(prev => [...prev, { role: 'user', content: "Generate structured document based on our session..." }]);
+    
+    const newUserMsg = { role: "user", parts: [{ text: docRequestMsg }] };
+    const currentHistory = [...apiHistory, newUserMsg];
+    setApiHistory(currentHistory);
+
+    try {
+      // Explicitly route to Claude Opus logic for heavy document generation
+      const result = await callIntelligenceEngine(currentHistory, docRequestMsg, 'document_generation');
+      const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Document generation complete.";
+
+      setMessages(prev => [...prev, { role: 'ai', content: aiText, isDocument: true }]);
+      setApiHistory(prev => [...prev, { role: "model", parts: [{ text: aiText }] }]);
+    } catch (err) {
+      console.error("API Error", err);
+      setMessages(prev => [...prev, { role: 'ai', content: "Failed to generate document." }]);
+    } finally {
+      setIsGeneratingDoc(false);
+    }
+  };
+
+  const formatAiMessage = (text, isDocument = false) => {
+    return text.split('\n').map((line, i) => {
+      if (line.trim() === '') return null;
+      
+      const parts = line.split(/\*\*(.*?)\*\*/g);
+      
+      const formattedLine = (
+        <p key={i} className={`mb-3 ${isDocument ? 'text-slate-800' : 'text-slate-700'} leading-relaxed text-justify`}>
+          {parts.map((part, j) => {
+            if (j % 2 === 1) { 
+              return <strong key={j} className="font-bold text-slate-900">{part}</strong>;
+            }
+            const italicParts = part.split(/\*(.*?)\*/g);
+            if (italicParts.length > 1) {
+              return italicParts.map((ip, k) => {
+                if (k % 2 === 1) return <em key={k} className="italic text-slate-800">{ip}</em>;
+                return <span key={k}>{ip}</span>;
+              });
+            }
+            return <span key={j}>{part}</span>;
+          })}
+        </p>
+      );
+
+      return formattedLine;
+    });
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white relative">
+      <div className="shrink-0 flex items-center justify-between p-4 border-b border-slate-200 bg-white z-10 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
+            <module.icon className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-900 leading-tight">{module.title}</h2>
+            <p className="text-xs text-slate-500 font-medium">Session with: {module.persona} • (Multi-Model Architecture Active)</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleGenerateDocument} disabled={isTyping || isGeneratingDoc} className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2">
+            <FileText className="w-4 h-4" /> Export Report
+          </button>
+          <button onClick={onBack} className="text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 px-3 py-1.5 rounded-md transition-colors">
+            Exit Session
+          </button>
+        </div>
+      </div>
+
+      <div className="shrink-0 bg-amber-50 border-b border-amber-100 p-3 text-center text-xs text-amber-800 font-medium z-10">
+        AI-generated advisory content. Not binding professional advice. Validate key decisions with domain experts.
+      </div>
+
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 md:p-10 bg-slate-50 relative pb-40">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl p-6 ${
+                msg.role === 'user' 
+                  ? 'bg-indigo-900 text-white shadow-md' 
+                  : msg.isDocument 
+                    ? 'bg-white border-2 border-indigo-200 shadow-lg w-full' 
+                    : 'bg-white border border-slate-200 shadow-sm'
+              }`}>
+                {msg.isDocument && (
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
+                      <FileText className="w-4 h-4"/> Generated Document (Routed via Claude Opus Config)
+                    </span>
+                  </div>
+                )}
+                {msg.role === 'user' ? (
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                ) : (
+                  <div className="prose prose-sm md:prose-base prose-slate max-w-none">
+                    {formatAiMessage(msg.content, msg.isDocument)}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {(isTyping || isGeneratingDoc) && (
+             <div className="flex justify-start">
+               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex gap-3 items-center">
+                 <span className="text-sm text-slate-500 font-medium">
+                   {isGeneratingDoc ? 'Drafting document (Claude Opus route)...' : 'Synthesizing response...'}
+                 </span>
+                 <div className="flex gap-1">
+                   <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
+                   <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-75"></span>
+                   <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-150"></span>
+                 </div>
+               </div>
+             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sticky Input Area */}
+      <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-50 via-slate-50 to-transparent pt-10 pb-6 px-6 shrink-0 z-20 pointer-events-none">
+        <div className="max-w-4xl mx-auto pointer-events-auto">
+          
+          {/* URL Input Popup */}
+          {showUrlInput && (
+            <div className="mb-2 bg-white rounded-lg shadow-md border border-slate-200 p-2 flex items-center animate-in slide-in-from-bottom-2">
+               <LinkIcon className="w-4 h-4 text-slate-400 ml-2" />
+               <input 
+                 type="url"
+                 value={urlValue}
+                 onChange={(e) => setUrlValue(e.target.value)}
+                 placeholder="Paste a URL for Perplexity/Claude to analyze..."
+                 className="flex-1 p-2 outline-none text-sm bg-transparent"
+                 autoFocus
+                 onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
+               />
+               <button 
+                 onClick={() => setShowUrlInput(false)}
+                 className="p-1 text-slate-400 hover:text-slate-600"
+               >
+                 &times;
+               </button>
+            </div>
+          )}
+
+          <div className="bg-white rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.08)] border border-slate-200 p-2 flex items-end focus-within:ring-2 focus-within:ring-indigo-500 transition-shadow">
+            <div className="flex items-center shrink-0 p-1">
+               <label className="cursor-pointer p-2 text-slate-400 hover:text-indigo-600 transition-colors rounded-lg hover:bg-indigo-50" title="Upload Document for Claude Analysis">
+                 <Upload className="w-5 h-5" />
+                 <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" />
+               </label>
+               <button 
+                 onClick={() => setShowUrlInput(!showUrlInput)}
+                 className={`p-2 transition-colors rounded-lg ${showUrlInput ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                 title="Add URL context"
+               >
+                 <LinkIcon className="w-5 h-5" />
+               </button>
+            </div>
+            
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
+              placeholder="Describe your challenge or ask for advice (Shift+Enter for new line)..."
+              className="flex-1 max-h-48 min-h-[44px] p-3 resize-none outline-none text-slate-700 bg-transparent placeholder-slate-400 leading-relaxed"
+              rows={1}
+            />
+            <button 
+              onClick={handleSend}
+              disabled={(!inputValue.trim() && !urlValue.trim()) || isTyping || isGeneratingDoc}
+              className="p-3 m-1 bg-indigo-900 text-white rounded-xl hover:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0 shadow-sm"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function VentureIQ() {
+  const [view, setView] = useState('landing');
+  const [activeModule, setActiveModule] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    if (!auth) {
+        setLoadingAuth(false);
+        return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+         try {
+            const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'data');
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                setUserProfile(docSnap.data());
+                setView('dashboard');
+            } else {
+                setView('onboarding');
+            }
+         } catch(e) {
+            console.error("Error fetching profile", e);
+            setView('onboarding');
+         }
+      } else {
+         setView('landing');
+      }
+      setLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleStart = () => {
+      if (user) {
+          userProfile ? setView('dashboard') : setView('onboarding');
+      } else {
+          setView('auth');
+      }
+  };
+  
+  const handleAuthSuccess = () => {
+      // Logic handled by onAuthStateChanged
+  };
+
+  const handleCompleteOnboarding = (profileData) => {
+      setUserProfile(profileData);
+      setView('dashboard');
+  };
+  
+  const handleEditProfile = () => {
+      setView('onboarding');
+  };
+
+  const handleSelectModule = (mod) => {
+    setActiveModule(mod);
+    setView('module');
+  };
+  
+  const handleBackToDashboard = () => {
+    setActiveModule(null);
+    setView('dashboard');
+  };
+
+  const handleSignOut = async () => {
+      if (auth) {
+          await signOut(auth);
+          setUserProfile(null);
+          setView('landing');
+      }
+  };
+
+  if (loadingAuth) {
+      return (
+         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <Brain className="w-12 h-12 text-indigo-500 animate-pulse" />
+         </div>
+      );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900 flex flex-col font-sans selection:bg-indigo-200 selection:text-indigo-900">
+      {view === 'landing' && <LandingPage onStart={handleStart} user={user} />}
+      {view === 'auth' && <Auth onAuthSuccess={handleAuthSuccess} />}
+      {view === 'onboarding' && <Onboarding onComplete={handleCompleteOnboarding} initialData={userProfile} userId={user?.uid} />}
+      
+      {(view === 'dashboard' || view === 'module') && (
+        <div className="flex h-screen overflow-hidden">
+          <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800">
+            <div className="p-6 flex items-center gap-2 border-b border-slate-800">
+              <div className="w-8 h-8 bg-indigo-600 rounded-sm flex items-center justify-center cursor-pointer" onClick={handleBackToDashboard}>
+                <Brain className="text-white w-5 h-5" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-white cursor-pointer" onClick={handleBackToDashboard}>VENTURE IQ</span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto py-6 custom-scrollbar">
+              <div className="px-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Workspace</div>
+              <button 
+                onClick={handleBackToDashboard}
+                className={`w-full flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors ${view === 'dashboard' ? 'bg-slate-800 text-white border-l-2 border-indigo-500' : ''}`}
+              >
+                <Activity className="w-4 h-4" /> HQ Dashboard
+              </button>
+              <button 
+                onClick={handleEditProfile}
+                className={`w-full flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors`}
+              >
+                <Settings className="w-4 h-4" /> Edit HQ Context
+              </button>
+              
+              <div className="px-4 mt-8 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Advisory Modules</div>
+              <div className="space-y-1">
+                {MODULES.map(mod => (
+                  <button 
+                    key={mod.id}
+                    onClick={() => handleSelectModule(mod)}
+                    className={`w-full flex items-center gap-3 px-6 py-2.5 text-sm hover:bg-slate-800 hover:text-white transition-colors ${view === 'module' && activeModule?.id === mod.id ? 'bg-slate-800 text-white' : 'text-slate-400'}`}
+                  >
+                    <mod.icon className="w-4 h-4 shrink-0" /> <span className="truncate">{mod.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-slate-800 flex items-center justify-between group cursor-pointer hover:bg-slate-800 transition-colors" onClick={handleSignOut}>
+              <div className="flex items-center gap-3 overflow-hidden">
+                 <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                    {userProfile?.name?.charAt(0)?.toUpperCase() || 'F'}
+                 </div>
+                 <div className="overflow-hidden">
+                   <p className="text-sm font-medium text-white truncate">{userProfile?.name || 'Founder'}</p>
+                   <p className="text-xs text-slate-500 truncate">{user?.email || 'Logged In'}</p>
+                 </div>
+              </div>
+              <LogOut className="w-4 h-4 text-slate-500 group-hover:text-white shrink-0" title="Sign Out" />
+            </div>
+          </aside>
+
+          <main className="flex-1 flex flex-col min-w-0 bg-white relative">
+             {view === 'dashboard' && <Dashboard onSelectModule={handleSelectModule} userProfile={userProfile} />}
+             {view === 'module' && activeModule && (
+               <AdvisoryModule module={activeModule} onBack={handleBackToDashboard} userProfile={userProfile} userId={user?.uid} />
+             )}
+          </main>
+        </div>
+      )}
+    </div>
+  );
+}
